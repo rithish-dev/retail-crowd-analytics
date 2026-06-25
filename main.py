@@ -5,8 +5,10 @@ import csv
 from datetime import datetime
 from datetime import date
 import json
-import os
+import os 
 from detector import detect_people
+from storage import save_state, log_event
+
 
 from config import (
     ZONE,
@@ -60,14 +62,7 @@ else:
     enter_count=0
     exit_count=0
 
-def save_state():
-    state={
-        "entered":enter_count,
-        "exited":exit_count,
-        "date":date.today().isoformat() 
-    } 
-    with open(state_file,"w") as f:
-        json.dump(state,f)
+
 
 
 log_file=f"people_log_{date.today().isoformat()}.csv" 
@@ -173,16 +168,7 @@ from utils import (
     iou
 )
 
-def log_event():
-        inside=enter_count-exit_count
-        with open(log_file,"a",newline="") as f:
-            writer=csv.writer(f)
-            writer.writerow([
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                enter_count,
-                exit_count,
-                inside
-                  ])
+
 
 
 
@@ -265,8 +251,8 @@ while True:
             hour=datetime.now().hour
             hour_counts[hour]=hour_counts.get(hour,0)+1
             enter_count+=1
-            log_event()
-            save_state()
+            log_event(log_file, enter_count, exit_count)
+            save_state(state_file, enter_count, exit_count)
 
         
         if not in_zone and people[pid]["inside"]==True:
@@ -278,8 +264,8 @@ while True:
                 people[pid]["enter_time"]=None
                 exit_count+=1
                 people[pid]["outside_time"] = None
-                log_event()
-                save_state() 
+                log_event(log_file, enter_count, exit_count)
+                save_state(state_file, enter_count, exit_count)
 
 
         color=(0,255,0) if in_zone else (0,0,255)
@@ -296,8 +282,8 @@ while True:
                 if p["inside"]:
                     p["inside"]=False
                     exit_count+=1
-                    log_event()
-                    save_state()
+                    log_event(log_file, enter_count, exit_count)
+                    save_state(state_file, enter_count, exit_count)
                 to_delete.append(pid)
                 
         
