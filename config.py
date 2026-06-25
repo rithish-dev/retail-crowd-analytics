@@ -5,3 +5,6 @@ DIST_THRESHOLD = 200
 REMOVE_AFTER = 10
 
 MODEL_NAME = "yolov8n.pt"
+
+SUMMARY_FILE = "daily_summary.csv"
+
