@@ -4,7 +4,13 @@ import csv
 from config import SUMMARY_FILE
 
 
-def save_daily_summary(day, hour_counts, peak_occupancy, dwell_times):
+def save_daily_summary(
+    day,
+    enter_count,
+    hour_counts,
+    peak_occupancy,
+    dwell_times
+):
     rows=[]
     found=False
 
@@ -25,11 +31,7 @@ def save_daily_summary(day, hour_counts, peak_occupancy, dwell_times):
     else:
         peak_hour=""
         peak_hour_count=0
-    dwell_times=[
-        p["total_time"]
-        for p in people.values()
-        if p["total_time"]>0
-    ]
+    
 
     if dwell_times:
         avg_dwell=sum(dwell_times)/len(dwell_times)

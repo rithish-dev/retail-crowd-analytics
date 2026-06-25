@@ -16,19 +16,18 @@ from config import (
     REMOVE_AFTER,
     MODEL_NAME
 )
-print("1. Starting...")
 
 from ultralytics import YOLO
-print("2. Imported YOLO")
+
 
 model = YOLO(MODEL_NAME)
-print("3. Model loaded")
+
 
 import cv2
-print("4. OpenCV imported")
+
 
 cap = cv2.VideoCapture(0)
-print("5. Camera opened")
+
 
 today=date.today().isoformat()
 current_day = today
@@ -110,11 +109,18 @@ while True:
 
     now_date=date.today().isoformat()
     if now_date!=current_day:
+        dwell_times = [
+    p["total_time"]
+    for p in people.values()
+    if p["total_time"] > 0
+]
         save_daily_summary(
     today,
+    enter_count,
     hour_counts,
     peak_occupancy,
-    dwell_times)
+    dwell_times
+)
 
         enter_count=0
         exit_count=0
@@ -177,6 +183,7 @@ while True:
         people[pid]["center"] = (cx,cy)
         people[pid]["last"] = now
 
+       
         in_zone=inside_zone(cx,cy,ZONE)
 
         if in_zone and not people[pid]["inside"]:
@@ -260,12 +267,20 @@ while True:
 if hour_counts:
         peak_hour=max(hour_counts,key=hour_counts.get,default=None)
         print("Peak Hour:",peak_hour,"with",hour_counts[peak_hour],"visits")
+dwell_times = [
+    p["total_time"]
+    for p in people.values()
+    if p["total_time"] > 0
+]
+
 
 save_daily_summary(
     today,
+    enter_count,
     hour_counts,
     peak_occupancy,
     dwell_times
 )
 cap.release()
 cv2.destroyAllWindows()
+
