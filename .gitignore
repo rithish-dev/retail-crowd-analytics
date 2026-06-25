@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+state.json
+people_log_*.csv
+daily_summary.csv
