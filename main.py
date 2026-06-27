@@ -8,6 +8,15 @@ import json
 import os 
 from detector import detect_people
 from storage import save_state, log_event
+from heatmap import initialize, add_point, get_heatmap, update
+from visualization import draw_ui
+from dashboard import hourly_chart
+from graphs import save_hourly_graph
+from reports import save_daily_summary
+
+
+
+
 
 
 from config import (
@@ -27,7 +36,13 @@ import cv2
 
 
 cap = cv2.VideoCapture(0)
+ret, frame = cap.read()
 
+if ret:
+    h, w = frame.shape[:2]
+    initialize(w, h)
+
+cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
 today=date.today().isoformat()
 current_day = today
@@ -44,6 +59,7 @@ if today!=current_day:
 
 
 people={}
+
 next_id=0
 
 state_file="state.json"
@@ -128,13 +144,15 @@ while True:
         current_day=now_date
 
     now=time.time()
+    update()
     detections = detect_people(frame, model)
     
     matched=set()
     
     for (x1,y1,x2,y2) in detections:
         cx,cy=getcenter((x1,y1,x2,y2))
-
+        if int(now * 5) != int((now - 0.03) * 5):
+            add_point(cx, cy)
 
         best=None
         best_score=0
@@ -158,16 +176,16 @@ while True:
         if best is None or best_score<0.15:
             pid=next_id
             next_id+=1
-            people[pid]={
-                "center":(cx,cy),
-                "last":now,
-                "inside":False,
-                "enter_time":None,
-                "total_time":0,
-                "box":(x1,y1,x2,y2),
-                "outside_time": None
-
-                  }
+            people[pid] = {
+    "center": (cx, cy),
+    "last": now,
+    "inside": False,
+    "enter_time": None,
+    "total_time": 0,
+    "box": (x1, y1, x2, y2),
+    "outside_time": None,
+    "path": []
+}
             
         else:
             pid=best
@@ -181,6 +199,10 @@ while True:
         
         matched.add(pid)
         people[pid]["center"] = (cx,cy)
+        people[pid]["path"].append((int(cx), int(cy)))
+
+        if len(people[pid]["path"]) > 100:
+            people[pid]["path"].pop(0)
         people[pid]["last"] = now
 
        
@@ -259,8 +281,18 @@ while True:
     current_occupancy=sum(1 for p in people.values() if p["inside"])
     peak_occupancy=max(peak_occupancy,current_occupancy)
 
+    heat = get_heatmap()
+
+    frame = cv2.addWeighted(
+    frame,
+    0.85,
+    heat,
+    0.15,
+    0
+)
+    
      
-    cv2.imshow("Re-made MVP",frame)
+    cv2.imshow("Pluto",frame)
     if cv2.waitKey(1) & 0xFF==ord("q"):
         break
 
@@ -281,6 +313,9 @@ save_daily_summary(
     peak_occupancy,
     dwell_times
 )
+hourly_chart(hour_counts)
+print(hour_counts)
+save_hourly_graph(hour_counts)
 cap.release()
 cv2.destroyAllWindows()
 
