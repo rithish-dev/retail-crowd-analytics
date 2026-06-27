@@ -15,13 +15,21 @@ def get_latest_summary():
 
     data = rows[-1]
 
-    hour = int(data["peak_hour"])
+    peak = data.get("peak_hour", "")
+    if peak.isdigit():
+        hour = int(peak)
+    else:
+        hour = None
 
-    suffix = "AM" if hour < 12 else "PM"
-    display = hour % 12
-    if display == 0:
-        display = 12
+    if hour is None:
+        data["peak_hour"] = "N/A"
+    else:
+        suffix = "AM" if hour < 12 else "PM"
+        display = hour % 12
+        if display == 0:
+            display = 12
 
-    data["peak_hour"] = f"{display} {suffix}"
+        data["peak_hour"] = f"{display} {suffix}"
 
-    return data 
+    return data
+

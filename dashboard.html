@@ -60,31 +60,41 @@
 
 <div class="card">
 <h2>Visitors Today</h2>
-<div class="value">32</div>
+<div class="value">{{data.total_visits}}</div>
 </div>
 
 <div class="card">
-<h2>Current Occupancy</h2>
-<div class="value">4</div>
+<h2>Peak Hour</h2>
+<div class="value">{{data.peak_hour}}</div>
 </div>
 
 <div class="card">
 <h2>Average Dwell</h2>
-<div class="value">4.3m</div>
+<div class="value">{{data.avg_dwell}} s</div>
 </div>
 
 <div class="card">
 <h2>Risk Score</h2>
-<div class="value">0.18</div>
+<div class="value">{{data.risk_score}}</div>
 </div>
 
 </div>
 
 <div class="section">
 
+
+<div class="section">
+
+<h2>Live Camera</h2>
+
+<img src="/video_feed">
+
+</div>
+
+
 <h2>Hourly Visitors</h2>
 
-<img src="reports/hourly_visitors.png">
+<img src="/static/hourly_visitors.png">
 
 </div>
 
@@ -92,8 +102,7 @@
 
 <h2>Heatmap</h2>
 
-<img src="reports/heatmap.png">
-
+<img src="/static/heatmap.png">
 </div>
 
 </body>
