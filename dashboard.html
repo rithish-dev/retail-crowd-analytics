@@ -38,6 +38,15 @@
             border-radius:15px;
             text-align:center;
         }
+        .card ul{
+        margin-top:15px;
+        padding-left:20px;
+        }
+
+        .card li{
+        margin-bottom:10px;
+        font-size:18px;
+        }
 
         .value{
             font-size:42px;
@@ -86,6 +95,18 @@
 <div class="value">{{data.risk_score}}</div>
 </div>
 
+
+
+<div class="card">
+    <h2>AI Recommendation</h2>
+    <ul>
+    {% for rec in data.recommendation %}
+        <li>{{ rec }}</li>
+    {% endfor %}
+    </ul>
+</div>
+
+
 </div>
 
 <div class="section">
@@ -112,6 +133,16 @@
 
 <img src="/static/heatmap.png">
 </div>
+
+
+
+<script>
+setInterval(() => {
+    location.reload();
+}, 5000);
+</script>
+
+
 
 </body>
 

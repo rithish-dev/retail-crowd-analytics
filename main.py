@@ -15,16 +15,17 @@ from reports import save_daily_summary
 from flask import Flask, Response, render_template_string
 from dashboard_data import get_latest_summary
 from live_data import live_metrics
-
-
-
+from recommendations import get_recommendation
+from dashboard import start_dashboard
+import dashboard
 with open("dashboard.html", "r", encoding="utf-8") as f:
     HTML = f.read()
-app = Flask(__name__) 
 
 
 
-processed_frame = None
+
+
+
 last_dashboard_update = 0
 
 from config import (
@@ -121,12 +122,12 @@ from utils import (
 
 
 def run_detector():
-    global processed_frame
+    
     global enter_count, exit_count
     global next_id
     global current_day
     global peak_occupancy
-    global processed_frame
+    
     global last_dashboard_update
 
     print("RUN DETECTOR STARTED")
@@ -342,7 +343,7 @@ def run_detector():
         live_metrics["risk_score"] = round(
         occupancy_score + dwell_score + flow_score,1
     )  
-
+        live_metrics["recommendation"] = get_recommendation(live_metrics)
 
         heat = get_heatmap()
        
@@ -360,7 +361,7 @@ def run_detector():
         0
     )
     
-        processed_frame = frame.copy()
+        dashboard.processed_frame = frame.copy()
 
         dwell_times = [
         p["total_time"] + (now - p["enter_time"] if p["inside"] and p["enter_time"] else 0)
@@ -393,42 +394,13 @@ def run_detector():
 from threading import Thread
 
 
-def generate_frames():
-    global processed_frame
-
-    while True:
-        if processed_frame is None:
-            continue
-
-        ret, buffer = cv2.imencode(".jpg", processed_frame)
-        frame = buffer.tobytes()
-
-        yield (
-            b'--frame\r\n'
-            b'Content-Type: image/jpeg\r\n\r\n'
-            + frame +
-            b'\r\n'
-        )
 
 
-@app.route("/video_feed")
-def video_feed():
-    return Response(
-        generate_frames(),
-        mimetype="multipart/x-mixed-replace; boundary=frame"
-    )
 
 
-@app.route("/")
-def home():
-    data = {
-        "total_visits": live_metrics["visitors"],
-        "current_occupancy": live_metrics["occupancy"],
-        "peak_hour": live_metrics["peak_hour"],
-        "avg_dwell": round(live_metrics["avg_dwell"], 1),
-        "risk_score": round(live_metrics["risk_score"], 2),
-    }
-    return render_template_string(HTML, data=data)
+
+
+
 
 
 if __name__ == "__main__":
@@ -440,9 +412,6 @@ if __name__ == "__main__":
 
     detector.start()
 
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=False
-    )
+    start_dashboard(HTML)
+    
 
