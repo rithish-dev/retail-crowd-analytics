@@ -224,6 +224,7 @@ def run_detector():
                 people[pid]["outside_time"] = None 
                 hour=datetime.now().hour
                 hour_counts[hour]=hour_counts.get(hour,0)+1
+                print(hour_counts)
                 enter_count+=1
                 log_event(log_file, enter_count, exit_count)
                 save_state(state_file, enter_count, exit_count)
@@ -318,7 +319,7 @@ def run_detector():
         dwell_times
             )
 
-            save_hourly_graph(hour_counts)
+            save_hourly_graph()
 
             cv2.imwrite(
             "static/heatmap.png",
