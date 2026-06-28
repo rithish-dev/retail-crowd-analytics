@@ -1,35 +1,11 @@
-import csv
-import os
+from live_data import live_metrics
 
 
 def get_latest_summary():
-
-    if not os.path.exists("daily_summary.csv"):
-        return None
-
-    with open("daily_summary.csv", "r") as f:
-        rows = list(csv.DictReader(f))
-
-    if not rows:
-        return None
-
-    data = rows[-1]
-
-    peak = data.get("peak_hour", "")
-    if peak.isdigit():
-        hour = int(peak)
-    else:
-        hour = None
-
-    if hour is None:
-        data["peak_hour"] = "N/A"
-    else:
-        suffix = "AM" if hour < 12 else "PM"
-        display = hour % 12
-        if display == 0:
-            display = 12
-
-        data["peak_hour"] = f"{display} {suffix}"
-
-    return data
-
+    return {
+        "total_visits": live_metrics["visitors"],
+        "current_occupancy": live_metrics["occupancy"],
+        "peak_hour": live_metrics["peak_hour"],
+        "avg_dwell": round(live_metrics["avg_dwell"], 1),
+        "risk_score": round(live_metrics["risk_score"], 2),
+    }

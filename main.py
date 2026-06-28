@@ -25,7 +25,7 @@ app = Flask(__name__)
 
 
 processed_frame = None
-
+last_dashboard_update = 0
 
 from config import (
     ZONE,
@@ -127,6 +127,7 @@ def run_detector():
     global current_day
     global peak_occupancy
     global processed_frame
+    global last_dashboard_update
 
     print("RUN DETECTOR STARTED")
 
@@ -142,13 +143,7 @@ def run_detector():
         for p in people.values()
         if p["total_time"] > 0
     ]
-            save_daily_summary(
-        today,
-        enter_count,
-        hour_counts,
-        peak_occupancy,
-        dwell_times
-    ) 
+        
     
     
         
@@ -312,16 +307,50 @@ def run_detector():
             for p in people.values()
         ]
 
+        if time.time() - last_dashboard_update > 10:
+
+            save_daily_summary(
+        today,
+        enter_count,
+        hour_counts,
+        peak_occupancy,
+        dwell_times
+            )
+
+            save_hourly_graph(hour_counts)
+
+            cv2.imwrite(
+            "static/heatmap.png",
+            get_heatmap()
+           )
+
+            last_dashboard_update = time.time()
+
+
+
+
         live_metrics["avg_dwell"] = (
             sum(dwell_times) / len(dwell_times)
             if dwell_times else 0
         )
 
 # Temporary until we improve the calculation
-        live_metrics["risk_score"] = 0
+        occupancy_score = min(current_occupancy / 20, 1.0) * 40
+        dwell_score = min(live_metrics["avg_dwell"] / 60, 1.0) * 30
+        flow_score = min(enter_count / 100, 1.0) * 30
+
+        live_metrics["risk_score"] = round(
+        occupancy_score + dwell_score + flow_score,1
+    )  
 
 
         heat = get_heatmap()
+       
+        cv2.imwrite(
+        "static/heatmap.png",
+        heat
+        )
+
 
         frame = cv2.addWeighted(
         frame,
@@ -338,15 +367,9 @@ def run_detector():
         for p in people.values()
         ]
 
-        save_daily_summary(
-    today,
-    enter_count,
-    hour_counts,
-    peak_occupancy,
-    dwell_times
-        )
+        
 
-        save_hourly_graph(hour_counts)
+        
 
         cv2.imshow("Pluto", frame)
 
@@ -398,11 +421,14 @@ def video_feed():
 
 @app.route("/")
 def home():
-    data = get_latest_summary()
-    return render_template_string(
-        HTML,
-        data=data
-    )
+    data = {
+        "total_visits": live_metrics["visitors"],
+        "current_occupancy": live_metrics["occupancy"],
+        "peak_hour": live_metrics["peak_hour"],
+        "avg_dwell": round(live_metrics["avg_dwell"], 1),
+        "risk_score": round(live_metrics["risk_score"], 2),
+    }
+    return render_template_string(HTML, data=data)
 
 
 if __name__ == "__main__":
