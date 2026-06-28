@@ -14,6 +14,10 @@ from graphs import save_hourly_graph
 from reports import save_daily_summary
 from flask import Flask, Response, render_template_string
 from dashboard_data import get_latest_summary
+from live_data import live_metrics
+
+
+
 with open("dashboard.html", "r", encoding="utf-8") as f:
     HTML = f.read()
 app = Flask(__name__) 
@@ -290,6 +294,32 @@ def run_detector():
     
         current_occupancy=sum(1 for p in people.values() if p["inside"])
         peak_occupancy=max(peak_occupancy,current_occupancy)
+
+        live_metrics["visitors"] = enter_count
+        live_metrics["occupancy"] = current_occupancy
+
+        live_metrics["peak_hour"] = (
+            max(hour_counts, key=hour_counts.get)
+            if hour_counts else "N/A"
+        )
+
+        dwell_times = [
+            p["total_time"] + (
+                now - p["enter_time"]
+                if p["inside"] and p["enter_time"]
+                else 0
+            )
+            for p in people.values()
+        ]
+
+        live_metrics["avg_dwell"] = (
+            sum(dwell_times) / len(dwell_times)
+            if dwell_times else 0
+        )
+
+# Temporary until we improve the calculation
+        live_metrics["risk_score"] = 0
+
 
         heat = get_heatmap()
 
