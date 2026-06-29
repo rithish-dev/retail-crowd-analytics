@@ -18,6 +18,14 @@ from live_data import live_metrics
 from recommendations import get_recommendation
 from dashboard import start_dashboard
 import dashboard
+from tracker_bytetrack import update_tracker
+import supervision as sv
+from analytics_engine import calculate_metrics
+from config import ZONES 
+from threading import Thread
+
+
+
 with open("dashboard.html", "r", encoding="utf-8") as f:
     HTML = f.read()
 
@@ -63,6 +71,11 @@ if today!=current_day:
 
 
 people={}
+zone_counts = {
+    "Entrance": 0,
+    "Shelf A": 0,
+    "Checkout": 0
+}
 
 next_id=0
 
@@ -118,7 +131,11 @@ from utils import (
     iou
 )
 
-
+def get_zone(cx, cy):
+    for name, (x1, y1, x2, y2) in ZONES.items():
+        if x1 <= cx <= x2 and y1 <= cy <= y2:
+            return name
+    return None
 
 
 def run_detector():
@@ -135,7 +152,7 @@ def run_detector():
     while True:
         ret,frame=cap.read()
         if not ret:
-            break 
+            continue 
 
         now_date=date.today().isoformat()
         if now_date!=current_day:
@@ -155,37 +172,30 @@ def run_detector():
 
         now=time.time()
         update()
-        detections = detect_people(frame, model)
+        results = model(frame)[0]
+        # detections = detect_people(frame, model)
+
+        detections = sv.Detections.from_ultralytics(results)
+
+        tracked_objects = update_tracker(detections)
+
+        print(tracked_objects)
+       
+        
     
-        matched=set()
-    
-        for (x1,y1,x2,y2) in detections:
+        for i, (x1, y1, x2, y2) in enumerate(tracked_objects.xyxy):
+            pid = int(tracked_objects.tracker_id[i])
             cx,cy=getcenter((x1,y1,x2,y2))
-            if int(now * 5) != int((now - 0.03) * 5):
-                add_point(cx, cy)
+            zone = get_zone(cx, cy)
 
-            best=None
-            best_score=0
-            for pid,p in people.items():
-                if "box" not in p:
-                    continue
-
-                iou_score=iou((x1,y1,x2,y2),p["box"])
-                px,py=p["center"]
-                dist = abs(px-cx) + abs(py-cy)
-                dist_score = max(0, 1 - dist/300)  
-                score = 0.6*iou_score + 0.4*dist_score
-
-
-                if score>best_score:
-                    best_score=score
-                    best=pid 
             
 
 
-            if best is None or best_score<0.15:
-                pid=next_id
-                next_id+=1
+
+            if int(now * 5) != int((now - 0.03) * 5):
+                add_point(cx, cy)
+
+            if pid not in people:
                 people[pid] = {
         "center": (cx, cy),
         "last": now,
@@ -194,28 +204,46 @@ def run_detector():
         "total_time": 0,
         "box": (x1, y1, x2, y2),
         "outside_time": None,
-        "path": []
-    }
+        "path": [],
+                }
+
+            people[pid]["box"] = (
+            int(x1),
+            int(y1),
+            int(x2),
+            int(y2)
+            )
+
+
+
             
-            else:
-                pid=best
+
+            people[pid]["center"] = (cx, cy)
+            if zone:
+                previous = people[pid].get("zone")
+
+                if previous != zone:
+                    people[pid]["zone"] = zone
+                    zone_counts[zone] = zone_counts.get(zone, 0) + 1
 
 
 
 
 
-            people[pid]["box"] = (x1,y1,x2,y2)
-
-        
-            matched.add(pid)
-            people[pid]["center"] = (cx,cy)
             people[pid]["path"].append((int(cx), int(cy)))
-
-            if len(people[pid]["path"]) > 100:
+            for i in range(1, len(people[pid]["path"])):
+                cv2.line(
+                    frame,
+                    people[pid]["path"][i - 1],
+                    people[pid]["path"][i],
+                    (0, 255, 255),
+                    2
+                )
+            if len(people[pid]["path"]) > 50:
                 people[pid]["path"].pop(0)
             people[pid]["last"] = now
+            
 
-       
             in_zone=inside_zone(cx,cy,ZONE)
 
             if in_zone and not people[pid]["inside"]:
@@ -229,7 +257,7 @@ def run_detector():
                 log_event(log_file, enter_count, exit_count)
                 save_state(state_file, enter_count, exit_count)
 
-        
+            
             if not in_zone and people[pid]["inside"]==True:
                 if people[pid]["outside_time"]==None:
                     people[pid]["outside_time"] = now
@@ -245,15 +273,22 @@ def run_detector():
 
             color=(0,255,0) if in_zone else (0,0,255)
             bx1,by1,bx2,by2 = people[pid]["box"]
+            bx1 = int(bx1)
+            by1 = int(by1)
+            bx2 = int(bx2)
+            by2 = int(by2)
             cv2.rectangle(frame,(bx1,by1),(bx2,by2),color,2)
 
 
 
 
-        to_delete=[]
-        for pid,p in people.items():
-            if pid not in matched:
-                if now-p["last"]>REMOVE_AFTER:
+        current_ids = set(tracked_objects.tracker_id.astype(int))
+
+        to_delete = []
+
+        for pid, p in people.items():
+            if pid not in current_ids:
+                if now - p["last"] > max(REMOVE_AFTER, 5):
                     if p["inside"]:
                         p["inside"]=False
                         exit_count+=1
@@ -294,10 +329,31 @@ def run_detector():
 
         live_metrics["visitors"] = enter_count
         live_metrics["occupancy"] = current_occupancy
+        
+        
+        zone_live = {}
+
+        for name, (zx1, zy1, zx2, zy2) in ZONES.items():
+            count = 0
+
+            for p in people.values():
+                if not p["inside"]:
+                    continue
+
+                cx, cy = p["center"]
+
+                if zx1 <= cx <= zx2 and zy1 <= cy <= zy2:
+                    count += 1
+
+            zone_live[name] = count
+
+        live_metrics["zones"] = zone_live
+
+
 
         live_metrics["peak_hour"] = (
             max(hour_counts, key=hour_counts.get)
-            if hour_counts else "N/A"
+            if hour_counts else "Loading..."
         )
 
         dwell_times = [
@@ -337,14 +393,42 @@ def run_detector():
         )
 
 # Temporary until we improve the calculation
-        occupancy_score = min(current_occupancy / 20, 1.0) * 40
-        dwell_score = min(live_metrics["avg_dwell"] / 60, 1.0) * 30
-        flow_score = min(enter_count / 100, 1.0) * 30
+        metrics = calculate_metrics(
+        people,
+        enter_count,
+        current_occupancy
+        )
 
-        live_metrics["risk_score"] = round(
-        occupancy_score + dwell_score + flow_score,1
-    )  
+        top_visitors = sorted(
+        people.items(),
+        key=lambda x: x[1]["total_time"],
+        reverse=True
+        )[:5]
+
+        live_metrics["top_visitors"] = [
+            {
+                "id": pid,
+                "time": round(data["total_time"], 1)
+            }
+            for pid, data in top_visitors
+        ]
+
+
+
+
+
+
+
+
+
+
+
+
+        live_metrics["avg_dwell"] = metrics["avg_dwell"]
+        live_metrics["risk_score"] = metrics["risk"]
+        live_metrics["zones"] = zone_counts
         live_metrics["recommendation"] = get_recommendation(live_metrics)
+     
 
         heat = get_heatmap()
        
@@ -392,17 +476,6 @@ def run_detector():
     
     cap.release()
     cv2.destroyAllWindows()
-from threading import Thread
-
-
-
-
-
-
-
-
-
-
 
 if __name__ == "__main__":
 
@@ -410,9 +483,6 @@ if __name__ == "__main__":
         target=run_detector,
         daemon=True
     )
-
     detector.start()
 
     start_dashboard(HTML)
-    
-

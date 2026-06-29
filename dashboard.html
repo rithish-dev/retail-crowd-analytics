@@ -75,73 +75,69 @@
 
 <div class="grid">
 
-<div class="card">
-<h2>Visitors Today</h2>
-<div class="value">{{data.total_visits}}</div>
-</div>
+    <div class="card">
+        <h2>Visitors Today</h2>
+        <div class="value">{{data.total_visits}}</div>
+    </div>
 
-<div class="card">
-<h2>Peak Hour</h2>
-<div class="value">{{data.peak_hour}}</div>
-</div>
+    <div class="card">
+        <h2>Peak Hour</h2>
+        <div class="value">{{data.peak_hour}}</div>
+    </div>
 
-<div class="card">
-<h2>Average Dwell</h2>
-<div class="value">{{data.avg_dwell}} s</div>
-</div>
+    <div class="card">
+        <h2>Average Dwell</h2>
+        <div class="value">{{data.avg_dwell}} s</div>
+    </div>
 
-<div class="card">
-<h2>Risk Score</h2>
-<div class="value">{{data.risk_score}}</div>
-</div>
+    <div class="card">
+        <h2>Risk Score</h2>
+        <div class="value">{{data.risk_score}}</div>
+    </div>
 
+    <div class="card">
+        <h2>AI Recommendation</h2>
+        <ul>
+        {% for rec in data.recommendation %}
+            <li>{{ rec }}</li>
+        {% endfor %}
+        </ul>
+    </div>
 
+    <div class="card">
+        <h2>🏆 Top Visitors</h2>
+        <ul>
+        {% for visitor in data.top_visitors %}
+            <li>ID {{visitor.id}} : {{visitor.time}} s</li>
+        {% endfor %}
+        </ul>
+    </div>
 
-<div class="card">
-    <h2>AI Recommendation</h2>
-    <ul>
-    {% for rec in data.recommendation %}
-        <li>{{ rec }}</li>
-    {% endfor %}
-    </ul>
-</div>
-
-
-</div>
-
-<div class="section">
-
-
-<div class="section">
-
-<h2>Live Camera</h2>
-
-<img src="/video_feed">
-
-</div>
-
-
-<h2>Hourly Visitors</h2>
-
-<img src="/static/hourly_visitors.png">
+    <div class="card">
+        <h2>📍 Zone Analytics</h2>
+        <ul>
+        {% for name, count in data.get("zones", {}).items() %}
+            <li>{{name}} : {{count}}</li>
+        {% endfor %}
+        </ul>
+    </div>
 
 </div>
 
 <div class="section">
-
-<h2>Heatmap</h2>
-
-<img src="/static/heatmap.png">
+    <h2>📹 Live Camera</h2>
+    <img src="/video_feed" style="width:100%; max-height:850px; object-fit:cover; border-radius:15px;">
 </div>
 
+<div class="section">
+    <h2>📊 Hourly Visitors</h2>
+    <img src="/static/hourly_visitors.png">
+</div>
 
-
-<script>
-setInterval(() => {
-    location.reload();
-}, 5000);
-</script>
-
+<div class="section">
+    <h2>🔥 Heatmap</h2>
+    <img src="/static/heatmap.png">
+</div>
 
 
 </body>

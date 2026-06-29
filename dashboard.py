@@ -44,9 +44,17 @@ def start_dashboard(html):
             "total_visits": live_metrics["visitors"],
             "current_occupancy": live_metrics["occupancy"],
             "peak_hour": live_metrics["peak_hour"],
-            "avg_dwell": round(live_metrics["avg_dwell"],1),
-            "risk_score": round(live_metrics["risk_score"],1),
-            "recommendation": live_metrics["recommendation"]
+            "avg_dwell": round(live_metrics["avg_dwell"], 1),
+            "risk_score": round(live_metrics["risk_score"], 1),
+
+            "recommendation": live_metrics.get(
+            "recommendation",
+            ["🟢 Store operations look healthy."]
+            ),
+
+            "top_visitors": live_metrics.get("top_visitors", []),
+
+            "zones": live_metrics.get("zones", {})
         }
 
         return render_template_string(
@@ -55,7 +63,8 @@ def start_dashboard(html):
         )
 
     app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=False
+    host="127.0.0.1",
+    port=5000,
+    debug=True,
+    use_reloader=False
     )
