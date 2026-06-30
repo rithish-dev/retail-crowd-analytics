@@ -54,7 +54,8 @@ def start_dashboard(html):
 
             "top_visitors": live_metrics.get("top_visitors", []),
 
-            "zones": live_metrics.get("zones", {})
+            "zones": live_metrics.get("zones", {}),
+            "flows": live_metrics.get("flows", {})
         }
 
         return render_template_string(

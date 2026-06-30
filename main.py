@@ -46,6 +46,9 @@ from config import (
 
 model = YOLO(MODEL_NAME)
 
+model.overrides["conf"] = 0.4
+model.overrides["iou"] = 0.5
+
 
 cap = cv2.VideoCapture(0)
 ret, frame = cap.read()
@@ -76,6 +79,7 @@ zone_counts = {
     "Shelf A": 0,
     "Checkout": 0
 }
+flow_counts = {}
 
 next_id=0
 
@@ -178,6 +182,10 @@ def run_detector():
         detections = sv.Detections.from_ultralytics(results)
 
         tracked_objects = update_tracker(detections)
+        # Remove invalid tracks
+        valid = tracked_objects.tracker_id != -1
+
+        tracked_objects = tracked_objects[valid]
 
         print(tracked_objects)
        
@@ -215,20 +223,24 @@ def run_detector():
             )
 
 
-
-            
-
             people[pid]["center"] = (cx, cy)
             if zone:
                 previous = people[pid].get("zone")
 
                 if previous != zone:
+
+                    if previous is not None:
+                        route = f"{previous} → {zone}"
+                        flow_counts[route] = flow_counts.get(route, 0) + 1
+
                     people[pid]["zone"] = zone
-                    zone_counts[zone] = zone_counts.get(zone, 0) + 1
 
+                    if "visited" not in people[pid]:
+                        people[pid]["visited"] = set()
 
-
-
+                    if zone not in people[pid]["visited"]:
+                        zone_counts[zone] += 1
+                        people[pid]["visited"].add(zone)
 
             people[pid]["path"].append((int(cx), int(cy)))
             for i in range(1, len(people[pid]["path"])):
@@ -243,7 +255,6 @@ def run_detector():
                 people[pid]["path"].pop(0)
             people[pid]["last"] = now
             
-
             in_zone=inside_zone(cx,cy,ZONE)
 
             if in_zone and not people[pid]["inside"]:
@@ -346,8 +357,8 @@ def run_detector():
                     count += 1
 
             zone_live[name] = count
-
-        live_metrics["zones"] = zone_live
+            live_metrics["zones"] = zone_live
+        
 
 
 
@@ -374,25 +385,10 @@ def run_detector():
         peak_occupancy,
         dwell_times
             )
-
             save_hourly_graph()
-
-            cv2.imwrite(
-            "static/heatmap.png",
-            get_heatmap()
-           )
 
             last_dashboard_update = time.time()
 
-
-
-
-        live_metrics["avg_dwell"] = (
-            sum(dwell_times) / len(dwell_times)
-            if dwell_times else 0
-        )
-
-# Temporary until we improve the calculation
         metrics = calculate_metrics(
         people,
         enter_count,
@@ -404,7 +400,7 @@ def run_detector():
         key=lambda x: x[1]["total_time"],
         reverse=True
         )[:5]
-
+        live_metrics["flows"] = flow_counts
         live_metrics["top_visitors"] = [
             {
                 "id": pid,
@@ -426,7 +422,7 @@ def run_detector():
 
         live_metrics["avg_dwell"] = metrics["avg_dwell"]
         live_metrics["risk_score"] = metrics["risk"]
-        live_metrics["zones"] = zone_counts
+        
         live_metrics["recommendation"] = get_recommendation(live_metrics)
      
 
