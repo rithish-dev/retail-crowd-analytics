@@ -389,22 +389,45 @@ def run_detector():
 
             last_dashboard_update = time.time()
 
+
+
+        people_metrics = {}
+
+        for pid, p in people.items():
+
+            if p["inside"] and p["enter_time"]:
+                live_time = p["total_time"] + (now - p["enter_time"])
+            else:
+                live_time = p["total_time"]
+
+            people_metrics[pid] = p.copy()
+            people_metrics[pid]["total_time"] = live_time
+
+
         metrics = calculate_metrics(
-        people,
+        people_metrics,
         enter_count,
         current_occupancy
         )
 
+
+
+        for p in people.values():
+            if p["inside"] and p["enter_time"]:
+                p["live_time"] = p["total_time"] + (now - p["enter_time"])
+            else:
+                p["live_time"] = p["total_time"]
+
         top_visitors = sorted(
         people.items(),
-        key=lambda x: x[1]["total_time"],
+        key=lambda x: x[1]["live_time"],
         reverse=True
         )[:5]
         live_metrics["flows"] = flow_counts
         live_metrics["top_visitors"] = [
             {
                 "id": pid,
-                "time": round(data["total_time"], 1)
+                "time": round(data["live_time"], 1)
             }
             for pid, data in top_visitors
         ]
@@ -449,12 +472,7 @@ def run_detector():
         for p in people.values()
         ]
 
-        
-      
-
-
-        
-
+    
         cv2.imshow("Pluto", frame)
 
         if cv2.waitKey(1) & 0xFF == ord("q") :

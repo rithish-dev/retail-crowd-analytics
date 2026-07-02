@@ -1,6 +1,10 @@
 import cv2
-from flask import Flask, render_template_string, send_file
+from flask import Flask, Response, render_template_string, send_file
 from live_data import live_metrics
+from datetime import date
+
+
+
 
 processed_frame = None
 
@@ -38,7 +42,7 @@ def start_dashboard(html):
         return send_file(
             "daily_summary.csv",
             as_attachment=True,
-            download_name="pluto_analytics.csv"
+            download_name=f"pluto_analytics_{date.today().isoformat()}.csv"
         )
 
 
