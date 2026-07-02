@@ -1,5 +1,5 @@
 import cv2
-from flask import Flask, Response, render_template_string
+from flask import Flask, render_template_string, send_file
 from live_data import live_metrics
 
 processed_frame = None
@@ -25,9 +25,23 @@ def generate_frames():
         )
 
 
+
+
+
+
 def start_dashboard(html):
 
     app = Flask(__name__)
+    
+    @app.route("/export")
+    def export_csv():
+        return send_file(
+            "daily_summary.csv",
+            as_attachment=True,
+            download_name="pluto_analytics.csv"
+        )
+
+
 
     @app.route("/video_feed")
     def video_feed():
