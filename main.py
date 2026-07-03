@@ -80,6 +80,7 @@ zone_counts = {
     "Checkout": 0
 }
 flow_counts = {}
+zone_dwell = {}
 
 next_id=0
 
@@ -224,6 +225,31 @@ def run_detector():
 
 
             people[pid]["center"] = (cx, cy)
+
+
+            current_zone = get_zone(cx, cy)
+
+            if current_zone:
+                if people[pid].get("zone_enter_time") is None:
+                    people[pid]["zone_enter_time"] = now
+
+                previous_zone = people[pid].get("zone")
+
+                if previous_zone != current_zone:
+
+                    if previous_zone:
+                        duration = now - people[pid]["zone_enter_time"]
+                        zone_dwell[previous_zone] = (
+                            zone_dwell.get(previous_zone, 0) + duration
+                        )
+
+                    people[pid]["zone"] = current_zone
+                    people[pid]["zone_enter_time"] = now
+
+
+
+
+
             if zone:
                 previous = people[pid].get("zone")
 
@@ -357,7 +383,13 @@ def run_detector():
                     count += 1
 
             zone_live[name] = count
-            live_metrics["zones"] = zone_live
+
+        live_metrics["zones"] = zone_live
+
+        live_metrics["zone_dwell"] = {
+            k: round(v, 1)
+            for k, v in zone_dwell.items()
+        }
         
 
 
