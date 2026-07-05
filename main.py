@@ -390,10 +390,7 @@ def run_detector():
             k: round(v, 1)
             for k, v in zone_dwell.items()
         }
-        
-
-
-
+    
         live_metrics["peak_hour"] = (
             max(hour_counts, key=hour_counts.get)
             if hour_counts else "Loading..."
@@ -479,8 +476,31 @@ def run_detector():
         live_metrics["risk_score"] = metrics["risk"]
         
         live_metrics["recommendation"] = get_recommendation(live_metrics)
-     
 
+
+
+
+        entrance = zone_live.get("Entrance", 0)
+        checkout = zone_live.get("Checkout", 0)
+
+        if entrance > checkout:
+            live_metrics["popular_direction"] = "Entrance → Store"
+
+        elif checkout > entrance:
+            live_metrics["popular_direction"] = "Store → Checkout"
+
+        else:
+            live_metrics["popular_direction"] = "↔Balanced"
+
+        if current_occupancy >= 5:
+            live_metrics["alert"] = "High Occupancy - Open another billing counter"
+
+        elif metrics["avg_dwell"] > 30:
+            live_metrics["alert"] = "Customers are spending unusually long in the store"
+
+        else:
+            live_metrics["alert"] = "Store operating normally"
+     
         heat = get_heatmap()
        
         cv2.imwrite(

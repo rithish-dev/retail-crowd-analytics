@@ -63,11 +63,13 @@ def start_dashboard(html):
             "current_occupancy": live_metrics["occupancy"],
             "peak_hour": live_metrics["peak_hour"],
             "avg_dwell": round(live_metrics["avg_dwell"], 1),
+            "alert": live_metrics.get("alert", "🟢 Store operating normally"),
+            "popular_direction": live_metrics.get("popular_direction", "Unknown"),
             "risk_score": round(live_metrics["risk_score"], 1),
 
             "recommendation": live_metrics.get(
             "recommendation",
-            ["🟢 Store operations look healthy."]
+            ["Store operations look healthy."]
             ),
 
             "top_visitors": live_metrics.get("top_visitors", []),
